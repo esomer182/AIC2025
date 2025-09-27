@@ -2,12 +2,16 @@ package myplayer;
 
 import aic2025.user.*;
 
+import java.util.Arrays;
+
 public class Gatherer extends Unit{
     Location myLoc;
     Craftable weapon = null;
     Location obj = null;
     int randomObj = 1;
     UnitInfo me;
+    Material[] wantedMaterials = {Material.WOOD, Material.STONE};
+    int round;
     public Gatherer (UnitController uc) {
         init(uc);
         getRandomLoc();
@@ -15,12 +19,49 @@ public class Gatherer extends Unit{
     }
 
     public void play() {
+        if (type == )
         myLoc = uc.getLocation();
         me = uc.getUnitInfo();
+        round = uc.getRound();
+        int shovelers = getNumShovelers();
+        int pickaxers = getNumPickaxers();
+        int axers = getNumAxers();
+        int[] hvMat = me.getCarriedMaterials();
+        if (shovelers < round/100+1 && uc.canCraft(Craftable.SHOVEL)) {
+            uc.craft(Craftable.SHOVEL);
+            changeType("G");
+        }
         if (myLoc == obj && randomObj == 1) {
             getRandomLoc();
         }
-        sense
+        searchLocation();
+        if (myLoc == obj && uc.canGather()) {
+            uc.gather();
+            searchLocation();
+            if (obj == myLoc) {
+                getRandomLoc();
+            }
+        }
+        pathfinding.moveTo(obj);
+    }
+
+    public String getType() {
+        return type;
+    }
+    public void searchLocation() {
+        MaterialInfo[] materials = uc.senseMaterials(GameConstants.UNIT_VISION_RANGE);
+        Location nearest = null;
+        for (MaterialInfo material : materials) {
+            if (Arrays.asList(wantedMaterials).contains(material.getMaterial())) {
+                if (nearest == null || isNearest(myLoc, material.getLocation(), nearest)) {
+                    nearest = material.getLocation();
+                }
+            }
+        }
+        if (nearest != null) {
+            obj = nearest;
+            randomObj = 0;
+        }
     }
 
     public void getRandomLoc() {
