@@ -23,9 +23,9 @@ public class Attacker extends Unit{
         int round = uc.getRound();
         searchEnemy();
         if (obj == null){
-            if (weapon == Craftable.AXE && round<1500) changeType (s:"AX");
-            else if (weapon == Craftable.SHOVEL && round<1500) changeType (s:"S");
-            else if (weapon == Craftable.PICKAXE && round<1500) changeType (s:"P");
+            if (weapon == Craftable.AXE && round<1500) changeType ("AX", "AT");
+            else if (weapon == Craftable.SHOVEL && round<1500) changeType ("S", "AT");
+            else if (weapon == Craftable.PICKAXE && round<1500) changeType ("P", "AT");
             else{
                 getRandomLoc();
                 pathfinding.moveTo(obj);
