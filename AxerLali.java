@@ -22,16 +22,23 @@ public class Axer extends Unit{
         myLoc = uc.getLocation();
         me = uc.getUnitInfo();
         round = uc.getRound();
-        if (myLoc == obj && randomObj == 1) {
-            getRandomLoc();
+        if (uc.canCraft(Craftable.BED_BLUEPRINT)) {
+            if (uc.canUseCraftable(Craftable.BED_BLUEPRINT, myLoc)) uc.useCraftable()
         }
-        searchLocation();
-        if (uc.canUseCraftable(weapon, obj)) {
-            uc.useCraftable(weapon, obj);
-            Location obj2 = obj;
-            searchLocation();
-            if (obj == obj2) {
+        if (uc.senseStructures(GameConstants.UNIT_VISION_RANGE, uc.getOpponent(), StructureType.BED).length>0) changeType (s:"AT");
+        else if (uc.senseUnits(2, uc.getOpponent()).length>0) changeType (s: "AT");
+        else{
+            if (myLoc == obj && randomObj == 1) {
                 getRandomLoc();
+            }
+            searchLocation();
+            if (uc.canUseCraftable(weapon, obj)) {
+                uc.useCraftable(weapon, obj);
+                Location obj2 = obj;
+                searchLocation();
+                if (obj == obj2) {
+                    getRandomLoc();
+                }
             }
         }
         pathfinding.moveTo(obj);
