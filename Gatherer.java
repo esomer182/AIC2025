@@ -19,18 +19,11 @@ public class Gatherer extends Unit{
     }
 
     public void play() {
-        if (type == )
         myLoc = uc.getLocation();
         me = uc.getUnitInfo();
         round = uc.getRound();
-        int shovelers = getNumShovelers();
-        int pickaxers = getNumPickaxers();
-        int axers = getNumAxers();
-        int[] hvMat = me.getCarriedMaterials();
-        if (shovelers < round/100+1 && uc.canCraft(Craftable.SHOVEL)) {
-            uc.craft(Craftable.SHOVEL);
-            changeType("G");
-        }
+        readBuffer();
+        updBuffer();
         if (myLoc == obj && randomObj == 1) {
             getRandomLoc();
         }
@@ -43,11 +36,28 @@ public class Gatherer extends Unit{
             }
         }
         pathfinding.moveTo(obj);
+        if (shovelers < round/100+1 && uc.canCraft(Craftable.SHOVEL)) {
+            uc.craft(Craftable.SHOVEL); //Can be improved.
+            changeType("S", "G");
+            return;
+        }
+        if (uc.canCraft(Craftable.AXE) && uc.canCraft(Craftable.PICKAXE)) {
+            if (pickaxers < axers) {
+                uc.craft(Craftable.PICKAXE); //Can be improved.
+                changeType("P", "G");
+            } else {
+                uc.craft(Craftable.AXE); //Can be improved.
+                changeType("AX", "G");
+            }
+        } else if (uc.canCraft(Craftable.AXE)) {
+            uc.craft(Craftable.AXE); //Can be improved.
+            changeType("AX", "G");
+        } else if (uc.canCraft(Craftable.PICKAXE)) {
+            uc.craft(Craftable.PICKAXE); //Can be improved.
+            changeType("P", "G");
+        }
     }
 
-    public String getType() {
-        return type;
-    }
     public void searchLocation() {
         MaterialInfo[] materials = uc.senseMaterials(GameConstants.UNIT_VISION_RANGE);
         Location nearest = null;
