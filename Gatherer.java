@@ -19,6 +19,18 @@ public class Gatherer extends Unit{
     }
 
     public void play() {
+        if (! uc.isOnMap()){
+            boolean spawned = false;
+            BedInfo[] beds = uc.getAllBedsInfo();
+            for (BedInfo bed : beds){
+                if (! bed.isOccupied() && uc.canSpawn(bed.getLocation())){
+                    uc.spawn(bed.getLocation());
+                    spawned = true;
+                    break;
+                }
+            }
+            if (! spawned) return;
+        }
         myLoc = uc.getLocation();
         me = uc.getUnitInfo();
         round = uc.getRound();
