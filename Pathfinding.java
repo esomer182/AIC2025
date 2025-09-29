@@ -12,13 +12,12 @@ public class Pathfinding{
     int minDistToEnemy = INF; //minimum distance I've been to the enemy while going around an obstacle
     Location prevTarget = null; //previous target
 
-    public Pathfinding(UnitController uc){
-        this.uc = uc;
+    public Pathfinding (UnitController other) {
+        uc = other;
     }
 
     void moveTo(Location target){
-        //No target? ==> bye!
-        if (target == null) return;
+        if (target == null || !uc.canMove()) return;
 
         //different target? ==> previous data does not help!
         if (prevTarget == null || !target.isEqual(prevTarget)) resetPathfinding();
@@ -46,6 +45,7 @@ public class Pathfinding{
                 move(dir);
                 return;
             }
+            if (!uc.canMove()) break;
             Location newLoc = myLoc.add(dir);
             if (uc.isOutOfMap(newLoc)) rotateRight = !rotateRight;
                 //If I could not go in that direction and it was not outside of the map, then this is the latest obstacle found
@@ -54,7 +54,7 @@ public class Pathfinding{
             else dir = dir.rotateLeft();
         }
 
-        if (canMove(dir)) move(dir);
+        if (dir != Direction.ZERO && canMove(dir)) move(dir);
     }
 
     //clear some of the previous data
@@ -64,10 +64,23 @@ public class Pathfinding{
     }
 
     boolean canMove(Direction dir) {
-        return uc.canMove(dir);
+        Location nwLoc = uc.getLocation().add(dir);
+        if (uc.canSenseLocation(nwLoc)) {
+            StructureInfo enem = uc.senseStructureAtLocation(nwLoc);
+            if (enem != null && enem.getType() == StructureType.BED && enem.getTeam() == uc.getOpponent()) return false; //No em moc a llits enemics.
+            if (uc.senseMaterialAtLocation(nwLoc) == Material.WATER) {
+                if (!uc.hasCraftable(Craftable.BOAT) && uc.canCraft(Craftable.BOAT) && (uc.hasCraftable(Craftable.PICKAXE) || uc.hasCraftable(Craftable.AXE) || uc.getUnitInfo().getCarriedMaterials()[6] >= 5)) {
+                    uc.craft(Craftable.BOAT);
+                }
+            }
+        }
+        return (uc.canMove(dir) || (uc.getLocation().distanceSquared(prevTarget) > 2 && uc.canUseCraftable(Craftable.BOOTS, nwLoc)));
     }
 
     void move(Direction dir){
-        uc.move(dir);
+        if (uc.canMove(dir)) uc.move(dir);
+        else if (uc.getLocation().distanceSquared(prevTarget) > 2 && uc.canUseCraftable(Craftable.BOOTS, uc.getLocation().add(dir))) {
+            uc.useCraftable(Craftable.BOOTS, uc.getLocation().add(dir));
+        }
     }
 }
