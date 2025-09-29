@@ -1,9 +1,6 @@
 package myplayer;
 
-import aic2025.user.BedInfo;
-import aic2025.user.Craftable;
-import aic2025.user.Direction;
-import aic2025.user.UnitController;
+import aic2025.user.*;
 
 public class UnitPlayer {
 
@@ -15,19 +12,30 @@ public class UnitPlayer {
         String lstType = "G";
         while (true) {
             unit.play();
-            if (lstType != unit.type) {
-                if (unit.type == "S") {
-                    unit = new Shoveler(uc);
-                } else if (unit.type == "AT") {
-                    unit = new Attacker(uc);
-                } else if (unit.type == "P") {
-                    unit = new Pickaxer(uc);
-                } else if (unit.type == "AX") {
-                    unit = new Axer(uc);
+            if (uc.isOnMap()) {
+                uc.println(unit.type);
+                if (!lstType.equals(unit.type)) {
+                    if (unit.type.equals("T")) {
+                        unit = new Tooler(uc);
+                    } else if (unit.type.equals("AT")) {
+                        unit = new Attacker(uc);
+                    } else if (unit.type.equals("G")) {
+                        unit = new Gatherer(uc);
+                    }
+                    unit.play();
                 }
+                lstType = unit.type;
+            } else {
+                lstType = "G";
+                unit = new Gatherer(uc);
             }
-            unit.play();
             uc.yield();
         }
     }
 }
+
+/*
+1) Crear eina només quan la necessitem.
+2) Els gatherers que fugeixein si se'ls apropen.
+3) Fer boots (i actualitzar pathfinding).
+*/
