@@ -1,4 +1,4 @@
-package myplayer;
+package myplayer_curr;
 
 import aic2025.user.*;
 
@@ -9,7 +9,9 @@ public abstract class Unit {
     Team myTeam, opponentTeam;
     Pathfinding pathfinding;
     UnitController uc;
+    Material[] whichMat = {Material.DIRT, Material.VOID, Material.GRASS, Material.WATER, Material.STRING, Material.POTATO, Material.WOOD, Material.LEATHER, Material.STONE, Material.COPPER, Material.IRON, Material.GOLD, Material.DIAMOND};
     int[] matWeight = {-10000, -10000, 0, -10000, 5, 1, 5, 0, 2, 1, 3, 4, 5}; //Updates with the game.
+    double[][] materialProbability = new double[][]{{0.0F, 0.0F, 0.0F}, {0.0F, 0.0F, 0.0F}, {0.9655F, 0.865F, 0.865F}, {0.0F, 0.0F, 0.0F}, {0.01F, 0.03F, 0.0F}, {0.01F, 0.075F, 0.0F}, {0.03F, 0.06F, 0.0F}, {0.01F, 0.03F, 0.0F}, {0.03F, 0.01F, 0.06F}, {0.01F, 0.0F, 0.06F}, {0.01F, 0.0F, 0.05F}, {0.003F, 0.0F, 0.03F}, {0.0015F, 0.0F, 0.02F}};
     Craftable[] neededTool = {null, null, Craftable.SHOVEL, null, Craftable.AXE, Craftable.SHOVEL, Craftable.AXE, Craftable.AXE, Craftable.PICKAXE, Craftable.PICKAXE, Craftable.PICKAXE, Craftable.PICKAXE, Craftable.PICKAXE};
     int mapWidth, mapHeight, id;
     int pickaxers = 0;
@@ -18,6 +20,7 @@ public abstract class Unit {
     Location chestLoc = null;
     ArrayList<Integer> msgs = new ArrayList<>();
     String type = "G";
+    Biome currBiome = Biome.DEFAULT;
     public void init(UnitController uc) {
         this.uc = uc;
         myTeam = uc.getTeam();
@@ -134,6 +137,7 @@ public abstract class Unit {
     }
 
     void craftAnything() {
+        if (!uc.canAct()) return;
         while (uc.canCraft(Craftable.SHOVEL)) {
             uc.craft(Craftable.SHOVEL);
         }
@@ -155,6 +159,14 @@ public abstract class Unit {
     }
 
     void tryCraftImportant() {
+        if (!uc.canAct()) return;
+        CraftableInfo[] craftables = uc.getUnitInfo().getCarriedCraftablesArray();
+        for (CraftableInfo crafts : craftables) {
+            if (crafts.getCraftable() == Craftable.BED_BLUEPRINT || crafts.getCraftable() == Craftable.CHEST_BLUEPRINT
+                    || crafts.getCraftable() == Craftable.BEACON_BLUEPRINT || (uc.getLocation().distanceSquared(uc.getBed()) <= 100 && crafts.getCraftable() == Craftable.COMPOSTER_BLUEPRINT)) {
+                tryToCreate(crafts.getCraftable());
+            }
+        }
         if (uc.canCraft(Craftable.BED_BLUEPRINT)) {
             uc.craft(Craftable.BED_BLUEPRINT);
         }
@@ -174,7 +186,7 @@ public abstract class Unit {
         if (uc.getLocation().distanceSquared(uc.getBed()) <= 100 && uc.canCraft(Craftable.COMPOSTER_BLUEPRINT)) {
             uc.craft(Craftable.COMPOSTER_BLUEPRINT);
         }
-        CraftableInfo[] craftables = uc.getUnitInfo().getCarriedCraftablesArray();
+        craftables = uc.getUnitInfo().getCarriedCraftablesArray();
         for (CraftableInfo crafts : craftables) {
             if (crafts.getCraftable() == Craftable.BED_BLUEPRINT || crafts.getCraftable() == Craftable.CHEST_BLUEPRINT
             || crafts.getCraftable() == Craftable.BEACON_BLUEPRINT || (uc.getLocation().distanceSquared(uc.getBed()) <= 100 && crafts.getCraftable() == Craftable.COMPOSTER_BLUEPRINT)) {
@@ -183,37 +195,139 @@ public abstract class Unit {
         }
     }
 
+    public void destroy() {
+        if (uc.getRound() >= 2000) return;
+        int hvMat[] = uc.getUnitInfo().getCarriedMaterials();
+        for (int i = 0; i < hvMat.length; i++) {
+            int limit = 5;
+            if (i >= Material.IRON.ordinal()) limit = 10;
+            else if (i == Material.STONE.ordinal()) limit = 3;
+            else if (i == Material.LEATHER.ordinal() && uc.hasCraftable(Craftable.BOOTS)) limit = 2;
+            while (hvMat[i] > limit) {
+                uc.destroyMaterial(whichMat[i]);
+                hvMat[i]--;
+            }
+        }
+    }
+
     public void tryUpgrade() {
+        if (!uc.canAct()) return;
+        if (uc.getRound() >= 2000) return;
         int[] hvMat = uc.getUnitInfo().getCarriedMaterials();
         int diamonds = hvMat[Material.DIAMOND.ordinal()];
-        int gold = hvMat[Material.DIAMOND.ordinal()];
-        int iron = hvMat[Material.DIAMOND.ordinal()];
+        int gold = hvMat[Material.GOLD.ordinal()];
+        int iron = hvMat[Material.IRON.ordinal()];
         if (diamonds > 2 && diamonds > 1 + uc.getCraftedBeacons()) {
             Upgrade lowest = null;
-            Craftable craft = null;
-            Craftable[] upgradejable = {Craftable.AXE, Craftable.PICKAXE, Craftable.SHOVEL, Craftable.SWORD, Craftable.ARMOR, Craftable.BOAT};
+            Craftable which = null;
+            Craftable[] upgradejable = {Craftable.SHOVEL, Craftable.SWORD, Craftable.ARMOR, Craftable.BOAT, Craftable.AXE, Craftable.PICKAXE};
             for (Craftable craft : upgradejable) {
-                if (uc.canUpgrade(craft, Upgrade.DIAMOND) && (lowest == null || uc.getUpgrade(craft) < lowest)) {
-
+                if (uc.canUpgrade(craft, Upgrade.DIAMOND) && (lowest == null || uc.getUpgrade(craft).ordinal() < lowest.ordinal())) {
+                    lowest = uc.getUpgrade(craft);
+                    which = craft;
                 }
             }
-        } else if (gold > 2 && gold > 1 + uc.getCraftedBeacons()) {
-
-        } else if (iron > 2 && iron > 1 + uc.getCraftedBeacons()) {
-
+            if (which != null && uc.canUpgrade(which, Upgrade.DIAMOND)) uc.upgrade(which, Upgrade.DIAMOND);
+        } else if ((gold > 2 && gold > 1 + uc.getCraftedBeacons()) || gold-diamonds >= 2) {
+            Upgrade lowest = null;
+            Craftable which = null;
+            Craftable[] upgradejable = {Craftable.SHOVEL, Craftable.SWORD, Craftable.ARMOR, Craftable.BOAT, Craftable.AXE, Craftable.PICKAXE};
+            for (Craftable craft : upgradejable) {
+                if (uc.canUpgrade(craft, Upgrade.GOLD) && (lowest == null || uc.getUpgrade(craft).ordinal() < lowest.ordinal())) {
+                    lowest = uc.getUpgrade(craft);
+                    which = craft;
+                }
+            }
+            if (which != null && uc.canUpgrade(which, Upgrade.GOLD)) uc.upgrade(which, Upgrade.GOLD);
+        } else if (iron > 2 && iron > 1 + uc.getCraftedBeacons() || iron-diamonds >= 2) {
+            Upgrade lowest = null;
+            Craftable which = null;
+            Craftable[] upgradejable = {Craftable.SHOVEL, Craftable.SWORD, Craftable.ARMOR, Craftable.BOAT, Craftable.AXE, Craftable.PICKAXE};
+            for (Craftable craft : upgradejable) {
+                if (uc.canUpgrade(craft, Upgrade.IRON) && (lowest == null || uc.getUpgrade(craft).ordinal() < lowest.ordinal())) {
+                    lowest = uc.getUpgrade(craft);
+                    which = craft;
+                }
+            }
+            if (which != null && uc.canUpgrade(which, Upgrade.IRON)) uc.upgrade(which, Upgrade.IRON);
         }
     }
 
     public void tryHeal() {
+        if (!uc.canAct()) return;
         if (uc.getUnitInfo().getHealth() <= 4) {
             uc.println("Health is less than 4");
             if (uc.hasCraftable(Craftable.BAKED_POTATO)) {
-                uc.useCraftable(Craftable.BAKED_POTATO, uc.getLocation());
-            } else if (uc.canCraft(Craftable.BAKED_POTATO)) {
-                uc.craft(Craftable.BAKED_POTATO);
                 if (uc.canUseCraftable(Craftable.BAKED_POTATO, uc.getLocation())) {
                     uc.useCraftable(Craftable.BAKED_POTATO, uc.getLocation());
                 }
+            }
+        }
+    }
+
+    public boolean canGatherTool(Location obj) {
+        if (!uc.canSenseLocation(obj)) return false;
+        Craftable tool = uc.senseMaterialAtLocation(obj).gatheringTool();
+        if (tool != null && uc.canUseCraftable(tool, obj)) return true;
+        else return false;
+    }
+
+    public void updateBiome() {
+        /*MaterialInfo[] mats = uc.senseMaterials(uc.getVisionRange());
+        double probBasic = 1;
+        double probC = 1;
+        double probF = 1;
+        for (MaterialInfo matInf : mats) {
+            Material mat = matInf.getMaterial();
+            if (mat == Material.VOID || mat == Material.WATER || mat == Material.DIRT || mat == null) continue;
+            probBasic *= mat.getMaterial().spawnProbability(Biome.DEFAULT);
+            probC *= mat.getMaterial().spawnProbability(biome);
+            double[] probs = materialProbability[mat.ordinal()];
+            probBasic *= probs[Biome.DEFAULT.ordinal()];
+            probC *= probs[Biome.CAVE.ordinal()];
+            probF *= probs[Biome.FOREST.ordinal()];
+        }
+        if (probF > probC && probF > probBasic) currBiome = Biome.FOREST;
+        else if (probC > probF && probC > probBasic) currBiome = Biome.CAVE;
+        else currBiome = Biome.DEFAULT;
+        */
+    }
+
+    public void tryGatherAround(int randomObj, Location inObj) {
+        if (!uc.canAct()) return;
+        Location myLoc = uc.getLocation();
+        Material currMat = null;
+        Location fin = null;
+        int[] hvMat = uc.getUnitInfo().getCarriedMaterials();
+        for (Direction dir : directions) {
+            Location obj = myLoc.add(dir);
+            if (!uc.canSenseLocation(obj)) continue;
+            Material material = uc.senseMaterialAtLocation(obj);
+            int i = material.ordinal();
+            if (!canGatherTool(obj)) continue;
+            int curr = 0;
+            if (currMat != null) curr = currMat.ordinal();
+            if (currMat == null || matWeight[i]-hvMat[i] > matWeight[curr]-hvMat[curr]
+                    || matWeight[i]-hvMat[i] == matWeight[curr]-hvMat[curr]) {
+                currMat = material;
+                fin = obj;
+            }
+        }
+        if (fin != null) {
+            if (currMat != Material.GRASS && currMat != Material.POTATO) uc.useCraftable(currMat.gatheringTool(), fin);
+            else {
+                Material myMat = uc.senseMaterialAtLocation(myLoc);
+                if ((randomObj == 1 || myLoc.equals(inObj)) && uc.canGather() && ((myMat == Material.WOOD || myMat == Material.STONE) && hvMat[myMat.ordinal()] < 2)) {
+                    uc.gather();
+                } else {
+                    uc.useCraftable(currMat.gatheringTool(), fin);
+                }
+            }
+        } else {
+            Material myMat = uc.senseMaterialAtLocation(myLoc);
+            if ((randomObj == 1 || myLoc.equals(inObj)) && myMat != Material.DIRT && uc.canGather() &&
+                    (myLoc.distanceSquared(uc.getBed()) <= 49 || ((myMat == Material.WOOD || myMat == Material.STONE) && hvMat[myMat.ordinal()] < 2))) {
+                uc.gather();
             }
         }
     }
