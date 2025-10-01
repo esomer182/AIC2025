@@ -1,6 +1,5 @@
-package myplayer;
+package myplayer_curr;
 
-import aic2025.engine.Game;
 import aic2025.user.*;
 
 public class Attacker extends Unit{
@@ -16,6 +15,7 @@ public class Attacker extends Unit{
         init(uc);
         getRandomLoc();
         me = uc.getUnitInfo();
+        type = "AT";
     }
 
     public void play() {
@@ -27,6 +27,7 @@ public class Attacker extends Unit{
             return;
         }
         if (type.equals("G")) changeType("AT", "G");
+        if (!uc.canAct() || !uc.canMove()) updateBiome();
         if (uc.hasCraftable(Craftable.SWORD)) {
             weapon = Craftable.SWORD;
             if (!uc.hasCraftable(Craftable.ARMOR) && uc.canCraft(Craftable.ARMOR)) {
@@ -43,35 +44,37 @@ public class Attacker extends Unit{
             else if (uc.hasCraftable(Craftable.AXE)) weapon = Craftable.AXE;
             else weapon = Craftable.PICKAXE;
         }
+        tryHeal();
         tryCraftImportant();
-        tryUpgrade();
-        if (uc.getRound() >= GameConstants.MAX_ROUNDS-50) {
+        if (uc.getRound() >= GameConstants.MAX_ROUNDS-100) {
             craftAnything();
         }
+        destroy();
         myLoc = uc.getLocation();
         me = uc.getUnitInfo();
         round = uc.getRound();
         if (!searchEnemy()){
             if (weapon != Craftable.SWORD && round<2300) {
-                changeType ("T", "AT");
+                if (uc.hasCraftable(Craftable.PICKAXE) || uc.hasCraftable(Craftable.AXE)) changeType ("T", "AT");
+                else changeType("G", "AT");
                 return;
             } else{
                 if (randomObj == 0) getRandomLoc();
                 else if (randomObj == 1 && obj.equals(myLoc)) getRandomLoc();
             }
         } else {
+            if (!uc.canUseCraftable(weapon, obj)) pathfinding.moveTo(obj);
             if (uc.canUseCraftable(Craftable.FIREWORK, obj)) uc.useCraftable(Craftable.FIREWORK, obj);
             else if (uc.canUseCraftable(weapon, obj)) uc.useCraftable(weapon, obj);
             else if (uc.canCraft(Craftable.FIREWORK)) uc.craft(Craftable.FIREWORK);
         }
-        tryHeal();
-        if (uc.canSenseLocation(myLoc) && uc.hasCraftable(uc.senseMaterialAtLocation(myLoc).gatheringTool())
-                && uc.canUseCraftable(uc.senseMaterialAtLocation(myLoc).gatheringTool(), myLoc)) {
-            uc.useCraftable(uc.senseMaterialAtLocation(myLoc).gatheringTool(), myLoc);
-        } else if (randomObj == 1 && uc.canSenseLocation(myLoc) && uc.senseMaterialAtLocation(myLoc) == Material.POTATO && uc.canGather()) {
-            uc.gather();
+        tryUpgrade();
+        tryGatherAround(0, obj); //the 0 is to never gather.
+        if (randomObj == 1) {
+            if (uc.canGather() && uc.senseMaterialAtLocation(myLoc) == Material.POTATO && !uc.hasCraftable(Craftable.BAKED_POTATO)) {
+                uc.gather();
+            } else if (!uc.hasCraftable(Craftable.BAKED_POTATO)) searchPotato();
         }
-        if (randomObj == 1) searchPotato();
         pathfinding.moveTo(obj);
     }
     public boolean searchEnemy() {
