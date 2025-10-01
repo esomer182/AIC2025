@@ -1,4 +1,4 @@
-package myplayer;
+package myplayer_curr;
 
 import aic2025.user.*;
 
