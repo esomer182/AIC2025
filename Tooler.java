@@ -1,8 +1,6 @@
-package myplayer;
+package myplayer_curr;
 
 import aic2025.user.*;
-
-import java.util.Arrays;
 
 public class Tooler extends Unit{
     Location myLoc;
@@ -15,6 +13,7 @@ public class Tooler extends Unit{
         init(uc);
         getRandomLoc();
         me = uc.getUnitInfo();
+        type="T";
     }
 
     public void play() {
@@ -26,13 +25,15 @@ public class Tooler extends Unit{
             return;
         }
         if (type.equals("G")) changeType("T", "G");
+        if (!uc.canAct() || !uc.canMove()) updateBiome();
+        tryHeal();
         tryCraftImportant();
         tryCraftTools();
-        if (uc.getRound() >= GameConstants.MAX_ROUNDS-50) {
+        if (uc.getRound() >= GameConstants.MAX_ROUNDS-100) {
             craftAnything();
         }
         tryUpgrade();
-        tryHeal();
+        destroy();
         myLoc = uc.getLocation();
         me = uc.getUnitInfo();
         round = uc.getRound();
@@ -44,32 +45,24 @@ public class Tooler extends Unit{
         if (round - lstLocRound >= 50 || obj == null || (myLoc.isEqual(obj) && randomObj == 1)) {
             getRandomLoc();
         }
-        searchLocation();
-        if (randomObj != 1 && uc.canSenseLocation(obj) && uc.senseMaterialAtLocation(obj).gatheringTool() != null
-                && uc.hasCraftable(uc.senseMaterialAtLocation(obj).gatheringTool())
-                && uc.canUseCraftable(uc.senseMaterialAtLocation(obj).gatheringTool(), obj)) {
+        boolean found = searchLocation();
+        if (randomObj != 1 && canGatherTool(obj)) {
             uc.useCraftable(uc.senseMaterialAtLocation(obj).gatheringTool(), obj);
             Location obj2 = obj;
-            searchLocation();
+            found = searchLocation();
             if (obj.isEqual(obj2)) {
                 getRandomLoc();
             }
         }
-        if (uc.canSenseLocation(myLoc) && uc.hasCraftable(uc.senseMaterialAtLocation(myLoc).gatheringTool())
-                && uc.canUseCraftable(uc.senseMaterialAtLocation(myLoc).gatheringTool(), myLoc)) {
-            uc.useCraftable(uc.senseMaterialAtLocation(myLoc).gatheringTool(), myLoc);
-        } else if (randomObj == 1 && uc.canGather()) {
-            uc.gather();
-        } else if (myLoc.isEqual(obj) && uc.canGather()) {
-            uc.gather();
-        }
-        if (randomObj == 0 && !searchLocation() && round-lstLocRound >= 20) {
+        tryGatherAround(randomObj, obj);
+        if (randomObj == 0 && !found && round-lstLocRound >= 20) {
             getRandomLoc();
         }
         pathfinding.moveTo(obj);
     }
 
     public boolean searchLocation() {
+        if (!uc.canMove() && !uc.canAct()) return false;
         MaterialInfo[] materials = uc.senseMaterials(uc.getVisionRange());
         Location nearest = null;
         Material currMat = null;
@@ -112,7 +105,7 @@ public class Tooler extends Unit{
                 for (MaterialInfo material : materials) {
                     if (material.getLocation().equals(obj) && round-lstLocRound >= 20) continue;
                     Material nwMat = material.getMaterial();
-                    if (nwMat == Material.STONE || nwMat == Material.WOOD) {
+                    if ((nwMat == Material.STONE || nwMat == Material.WOOD) && hvMat[nwMat.ordinal()] < 2) {
                         if (mat == null || hvMat[nwMat.ordinal()] < hvMat[mat.ordinal()] || (hvMat[nwMat.ordinal()] == hvMat[mat.ordinal()] && isNearest(myLoc, material.getLocation(), nearest))) {
                             nearest = material.getLocation();
                             mat = nwMat;
@@ -130,20 +123,19 @@ public class Tooler extends Unit{
     }
 
     public void getRandomLoc() {
+        if (!uc.canMove() && !uc.canAct()) return;
         obj = new Location(getRandomInt(0, mapWidth-1), getRandomInt(0, mapHeight-1));
         randomObj = 1;
         lstLocRound = round;
     }
 
     public void tryCraftTools() {
-        if (uc.getRound() >= 250 && uc.canCraft(Craftable.SHOVEL) && !uc.hasCraftable(Craftable.SHOVEL)) {
+        if (!uc.canCraft(Craftable.SHOVEL)) return;
+        //Maybe put that only craft the tool if wood > leather in case we have an axe.
+        if (currBiome == Biome.CAVE && uc.canCraft(Craftable.PICKAXE) && !uc.hasCraftable(Craftable.PICKAXE)) uc.craft(Craftable.PICKAXE);
+        else if (currBiome == Biome.FOREST && uc.canCraft(Craftable.AXE) && !uc.hasCraftable(Craftable.AXE)) uc.craft(Craftable.AXE);
+        if (uc.canCraft(Craftable.SHOVEL) && !uc.hasCraftable(Craftable.SHOVEL)) {
             uc.craft(Craftable.SHOVEL);
-        }
-        if (uc.getRound() >= 500 && uc.canCraft(Craftable.PICKAXE) && !uc.hasCraftable(Craftable.PICKAXE)) {
-            uc.craft(Craftable.PICKAXE);
-        }
-        if (uc.canCraft(Craftable.AXE) && !uc.hasCraftable(Craftable.AXE)) {
-            uc.craft(Craftable.AXE);
         }
     }
 }
