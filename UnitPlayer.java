@@ -1,4 +1,4 @@
-package myplayer;
+package myplayer_curr;
 
 import aic2025.user.*;
 
@@ -13,7 +13,6 @@ public class UnitPlayer {
         while (true) {
             unit.play();
             if (uc.isOnMap()) {
-                uc.println(unit.type);
                 if (!lstType.equals(unit.type)) {
                     if (unit.type.equals("T")) {
                         unit = new Tooler(uc);
@@ -22,9 +21,24 @@ public class UnitPlayer {
                     } else if (unit.type.equals("G")) {
                         unit = new Gatherer(uc);
                     }
+                    lstType = unit.type;
                     unit.play();
-                }
-                lstType = unit.type;
+                    if (uc.isOnMap()) {
+                        if (!lstType.equals(unit.type)) {
+                            if (unit.type.equals("T")) {
+                                unit = new Tooler(uc);
+                            } else if (unit.type.equals("AT")) {
+                                unit = new Attacker(uc);
+                            } else if (unit.type.equals("G")) {
+                                unit = new Gatherer(uc);
+                            }
+                        }
+                        lstType = unit.type;
+                    } else {
+                        lstType = "G";
+                        unit = new Gatherer(uc);
+                    }
+                } else lstType = unit.type;
             } else {
                 lstType = "G";
                 unit = new Gatherer(uc);
