@@ -1,6 +1,6 @@
 # AIC2025 Bot
 
-This repository contains our team’s bot for **AI Coliseum 2025 (AIC2025: Minecraft)**.
+This repository contains our team’s bot for **AI Coliseum 2025 (AIC2025: Minecraft)**, in which we finished 2nd in the 8h Challenge, 2nd in the Sprint and 6th overall.
 
 We worked on this as a team of 4, splitting different parts of the logic (roles, pathfinding, combat, crafting, coordination, etc.) and then integrating everything into a single coherent bot.
 
